@@ -1,52 +1,95 @@
-
 name: Tieba Qiandao
 
 on:
   schedule:
-    # UTC 18:30 = 北京时间 02:30
+    # UTC 18:30 = 北京时间次日 02:30
     - cron: "30 18 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# 避免上一次还没跑完就重复启动
-concurrency:
-  group: tieba-qiandao
-  cancel-in-progress: false
-
 jobs:
   sign:
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
+    # 多账号：每个账号一个 job，某个账号失败不影响另一个
+    # 账号2 使用 secret TIEBA_COOKIES_2 / SENDKEY_2，未配置时自动跳过
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: "1"
+            name: "账号1"
+            secret: TIEBA_COOKIES
+            sendkey: SENDKEY
+            log: tieba_sign_1.log
+          - id: "2"
+            name: "账号2"
+            secret: TIEBA_COOKIES_2
+            sendkey: SENDKEY_2
+            log: tieba_sign_2.log
+
+    # 每个账号独立并发组，互不阻塞
+    concurrency:
+      group: tieba-qiandao-${{ matrix.id }}
+      cancel-in-progress: false
+
+    env:
+      TIEBA_COOKIES: ${{ secrets[matrix.secret] }}
+      SENDKEY: ${{ secrets[matrix.sendkey] }}
+      TIEBA_ACCOUNT: ${{ matrix.name }}
+      TIEBA_LOG_FILE: ${{ matrix.log }}
+      PYTHONUNBUFFERED: "1"
+
     steps:
+      - name: 检查 Cookie 配置
+        id: check
+        run: |
+          if [ -z "${TIEBA_COOKIES}" ]; then
+            echo "::warning::${{ matrix.name }} 未配置 Cookie（secret ${{ matrix.secret }}），本次跳过"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.check.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Set up Python
+        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run Tieba Qiandao
-        env:
-          TIEBA_COOKIES: ${{ secrets.TIEBA_COOKIES }}
-          SENDKEY: ${{ secrets.SENDKEY }}
-          PYTHONUNBUFFERED: "1"
+        id: sign
+        if: steps.check.outputs.skip != 'true'
+        continue-on-error: true
         run: python -u run_tieba_qiandao.py
+
+      # 网络抖动、贴吧接口偶发失败时自动重试一次；Cookie 失效这类错误重试也无法恢复
+      - name: Retry once
+        if: steps.check.outputs.skip != 'true' && steps.sign.outcome == 'failure'
+        run: |
+          echo "首次运行失败，60 秒后重试一次"
+          sleep 60
+          python -u run_tieba_qiandao.py
 
       - name: Upload run log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tieba-sign-log
-          path: tieba_sign.log
+          name: tieba-sign-log-${{ matrix.id }}
+          path: ${{ matrix.log }}
           if-no-files-found: ignore
           retention-days: 7
