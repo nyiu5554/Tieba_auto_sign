@@ -29,13 +29,6 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Set up Chrome
-        id: chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-          install-dependencies: true
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -47,7 +40,6 @@ jobs:
           SENDKEY: ${{ secrets.SENDKEY }}
           # 兼容旧配置里的 secret 名称
           SendKey: ${{ secrets.SendKey }}
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: python run_tieba_qiandao.py
 
       - name: Upload run log

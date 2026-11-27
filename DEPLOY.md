@@ -1,8 +1,8 @@
 # 部署到 GitHub Actions（从零到跑通）
 
-本文档对应的仓库已经针对 2026 年的 GitHub Actions 环境做过修正：
-Chrome 改用 `browser-actions/setup-chrome` 安装（Ubuntu 24.04 已不再提供 apt 版 Chromium），
-脚本也修掉了重复点击、`page.close()` 后继续使用页面等 bug。
+本文档对应的仓库已经针对 2026 年的贴吧页面做过修正：
+签到改为直接调用贴吧 Web 接口，**不再需要 Chrome/Chromium**，在 GitHub Actions 和
+Docker 里都能稳定运行；脚本也修掉了重复点击、页面关闭后继续使用等旧 bug。
 
 ---
 
@@ -124,13 +124,12 @@ GitHub 的 cron 使用 **UTC**，想改时间就改这里：
 # Linux / macOS
 export TIEBA_COOKIES="$(cat tieba_cookies.json)"
 export SENDKEY="你的SendKey"          # 可选
-HEADLESS=0 python run_tieba_qiandao.py # HEADLESS=0 会显示浏览器窗口
+python run_tieba_qiandao.py
 ```
 
 ```powershell
 # Windows PowerShell
 $env:TIEBA_COOKIES = Get-Content tieba_cookies.json -Raw
-$env:HEADLESS = "0"
 python run_tieba_qiandao.py
 ```
 
@@ -139,9 +138,11 @@ python run_tieba_qiandao.py
 | 变量 | 说明 |
 | --- | --- |
 | `TIEBA_COOKIES` | 必填，Cookie JSON 或字符串 |
+| `TIEBA_COOKIES_FILE` | 可选，Cookie JSON 文件路径（`TIEBA_COOKIES` 为空时生效） |
 | `SENDKEY` / `SendKey` | 可选，Server酱推送 |
-| `CHROME_PATH` | 可选，指定 Chrome/Chromium 路径 |
-| `HEADLESS` | 可选，设为 `0` 显示浏览器窗口，默认无头模式 |
+| `TIEBA_LOG_FILE` | 可选，日志文件路径 |
+| `TIEBA_DELAY` | 可选，每个吧签到间隔秒数，默认 `0.6` |
+| `TIEBA_LIMIT` | 可选，只处理前 N 个吧，调试用，默认全部 |
 
 ---
 
@@ -155,7 +156,8 @@ A：重新运行 `点我生成Cookie.py`，确认登录后再按回车，然后�
 A：确认该账号确实关注了贴吧；也可能是 Cookie 不完整，优先使用 `tieba_cookies.json` 的完整内容。
 
 **Q：日志提示「找不到签到按钮」**
-A：贴吧页面结构变化，或该吧处于被限制状态。脚本会自动尝试接口兜底；仍失败时把日志发出来便于修正选择器。
+A：新版脚本已改为直接调用 `/sign/add` 接口，不再依赖页面按钮；如果接口返回 `no=1011`，
+说明该吧未加入或等级不足，会在汇总里标为失败。
 
 **Q：定时任务没有运行**
 A：检查 Actions 是否已启用、仓库是否 60 天无提交、cron 是否写成了 UTC 时间。
@@ -163,9 +165,9 @@ A：检查 Actions 是否已启用、仓库是否 60 天无提交、cron 是否�
 **Q：通知收不到**
 A：确认 `SENDKEY` 配置正确，且 Server酱账号已绑定微信；日志里会打印通知发送结果。
 
-**Q：Actions 里 Chrome 启动失败**
-A：本仓库已使用 `browser-actions/setup-chrome` 并在脚本里加了 `--no-sandbox`、`--disable-dev-shm-usage`。
-如果仍然失败，检查运行日志中 `CHROME_PATH` 是否为空。
+**Q：Actions 里运行很慢或超时**
+A：脚本现在是纯接口签到，228 个吧约 3-5 分钟。若变慢，检查是否被贴吧限流，
+可适当调大 `TIEBA_DELAY`（例如 `1.0`）。
 
 ---
 

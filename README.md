@@ -63,6 +63,18 @@ pip install drissionpage
 微信上的通知：
 ![](./img/bdb0ba11c3a4287f80621b75d93450ee.jpg)
 
+## 3.5 用 Docker 部署到自己服务器 🐳
+
+不想依赖 GitHub Actions 时，可以把脚本跑在自己的 Docker 主机上，容器自带 Chromium 并按北京时间定时签到：
+
+```bash
+cp .env.example .env      # 填入 TIEBA_COOKIES 或 TIEBA_COOKIES_FILE
+docker compose up -d --build
+docker compose logs -f
+```
+
+完整步骤（配置、定时、日志、更新、FAQ）见 [DOCKER.md](DOCKER.md)。
+
 ## 4. 源码原理解析 🔍
 整个脚本主要分为以下几个部分：
 

@@ -1,0 +1,9 @@
+.git
+.venv
+__pycache__
+*.pyc
+logs
+secrets
+.env
+tieba_cookie*.json
+tieba_cookie*.txt

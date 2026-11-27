@@ -2,6 +2,9 @@
 tieba_cookies.json
 tieba_cookie.txt
 tieba_sign.log
+.env
+secrets/
+logs/
 
 # Python
 .venv/
