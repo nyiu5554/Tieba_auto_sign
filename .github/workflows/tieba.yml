@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   sign:
+    name: 签到 - ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
