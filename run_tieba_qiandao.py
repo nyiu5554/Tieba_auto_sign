@@ -13,6 +13,7 @@
     TIEBA_COOKIES_FILE  可选。Cookie JSON 文件路径（TIEBA_COOKIES 为空时生效）
     SENDKEY             可选。Server酱 SendKey（兼容旧变量名 SendKey）
     TIEBA_LOG_FILE      可选。日志文件路径，默认脚本同目录 tieba_sign.log
+    TIEBA_ACCOUNT       可选。账号备注名（多账号时用于区分日志和通知），如「账号1」
     TIEBA_DELAY         可选。每个吧签到之间的等待秒数，默认 0.6
     TIEBA_LIMIT         可选。只处理前 N 个吧，用于调试，默认 0（全部）
 """
@@ -45,6 +46,7 @@ UA = (
 DELAY = 0.6
 
 log_lines: list[str] = []
+ACCOUNT = (os.environ.get("TIEBA_ACCOUNT") or "").strip()
 
 
 # --------------------------------------------------------------------------- #
@@ -52,8 +54,9 @@ log_lines: list[str] = []
 # --------------------------------------------------------------------------- #
 def log(msg: str = "") -> None:
     stamp = datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{stamp}] {msg}", flush=True)
-    log_lines.append(f"[{stamp}] {msg}")
+    prefix = f"[{ACCOUNT}] " if ACCOUNT else ""
+    print(f"[{stamp}] {prefix}{msg}", flush=True)
+    log_lines.append(f"[{stamp}] {prefix}{msg}")
 
 
 def save_log() -> None:
@@ -396,6 +399,8 @@ def build_summary(results: list[tuple[str, str, str]], elapsed: float) -> tuple[
     failed = [r for r in results if r[1] == "error"]
 
     title = f"贴吧签到 {len(success)} 成功 / {len(already)} 已签 / {len(failed)} 失败"
+    if ACCOUNT:
+        title = f"{ACCOUNT} {title}"
     lines = [
         f"**{datetime.now(TZ):%Y-%m-%d %H:%M}** 共 {len(results)} 个吧，用时 {elapsed:.0f} 秒",
         "",

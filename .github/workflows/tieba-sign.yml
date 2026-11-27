@@ -1,0 +1,98 @@
+name: Tieba Sign
+
+# 可复用工作流：由 tieba-account-1.yml / tieba-account-2.yml 分别调用，
+# 两个账号各自是独立的一次 workflow run，互不影响。
+
+on:
+  workflow_call:
+    inputs:
+      account:
+        description: 账号显示名，用于通知标题和日志前缀
+        required: true
+        type: string
+      id:
+        description: 账号编号，用于并发组和 artifact 区分
+        required: true
+        type: string
+      log_name:
+        description: 该账号的日志文件名
+        required: true
+        type: string
+    secrets:
+      COOKIE:
+        description: 该账号的贴吧 Cookie
+        required: false
+      SENDKEY:
+        description: 该账号的 Server酱 SendKey（可留空）
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    name: 签到 - ${{ inputs.account }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    concurrency:
+      group: tieba-qiandao-${{ inputs.id }}
+      cancel-in-progress: false
+
+    env:
+      TIEBA_COOKIES: ${{ secrets.COOKIE }}
+      SENDKEY: ${{ secrets.SENDKEY }}
+      TIEBA_ACCOUNT: ${{ inputs.account }}
+      TIEBA_LOG_FILE: ${{ inputs.log_name }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: 检查 Cookie 配置
+        id: check
+        run: |
+          if [ -z "${TIEBA_COOKIES}" ]; then
+            echo "::warning::${{ inputs.account }} 未配置 Cookie，本次跳过"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Tieba Qiandao
+        id: sign
+        if: steps.check.outputs.skip != 'true'
+        continue-on-error: true
+        run: python -u run_tieba_qiandao.py
+
+      # 网络抖动、贴吧接口偶发失败时自动重试一次；Cookie 失效重试也无法恢复
+      - name: Retry once
+        if: steps.check.outputs.skip != 'true' && steps.sign.outcome == 'failure'
+        run: |
+          echo "首次运行失败，60 秒后重试一次"
+          sleep 60
+          python -u run_tieba_qiandao.py
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tieba-sign-log-${{ inputs.id }}
+          path: ${{ inputs.log_name }}
+          if-no-files-found: ignore
+          retention-days: 7

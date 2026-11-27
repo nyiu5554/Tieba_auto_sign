@@ -1,0 +1,20 @@
+name: 贴吧签到 - 账号2
+
+on:
+  schedule:
+    # UTC 19:00 = 北京时间次日 03:00，与账号1 错开 30 分钟，避免同 IP 同时请求
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+jobs:
+  sign:
+    uses: ./.github/workflows/tieba-sign.yml
+    permissions:
+      contents: read
+    with:
+      id: "2"
+      account: "账号2"
+      log_name: "tieba_sign_2.log"
+    secrets:
+      COOKIE: ${{ secrets.TIEBA_COOKIES_2 }}
+      SENDKEY: ${{ secrets.SENDKEY_2 || secrets.SENDKEY }}
