@@ -1,0 +1,20 @@
+name: 贴吧签到 - 账号1
+
+on:
+  schedule:
+    # UTC 18:30 = 北京时间次日 02:30
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  sign:
+    uses: ./.github/workflows/tieba-sign.yml
+    permissions:
+      contents: read
+    with:
+      id: "1"
+      account: "账号1"
+      log_name: "tieba_sign_1.log"
+    secrets:
+      COOKIE: ${{ secrets.TIEBA_COOKIES }}
+      SENDKEY: ${{ secrets.SENDKEY }}

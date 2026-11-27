@@ -1,47 +1,49 @@
-name: Tieba Qiandao
+name: Tieba Sign
+
+# 可复用工作流：由 tieba-account-1.yml / tieba-account-2.yml 分别调用，
+# 两个账号各自是独立的一次 workflow run，互不影响。
 
 on:
-  schedule:
-    # UTC 18:30 = 北京时间次日 02:30
-    - cron: "30 18 * * *"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      account:
+        description: 账号显示名，用于通知标题和日志前缀
+        required: true
+        type: string
+      id:
+        description: 账号编号，用于并发组和 artifact 区分
+        required: true
+        type: string
+      log_name:
+        description: 该账号的日志文件名
+        required: true
+        type: string
+    secrets:
+      COOKIE:
+        description: 该账号的贴吧 Cookie
+        required: false
+      SENDKEY:
+        description: 该账号的 Server酱 SendKey（可留空）
+        required: false
 
 permissions:
   contents: read
 
 jobs:
   sign:
-    name: 签到 - ${{ matrix.name }}
+    name: 签到 - ${{ inputs.account }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
-    # 多账号：每个账号一个 job，某个账号失败不影响另一个
-    # 账号2 使用 secret TIEBA_COOKIES_2 / SENDKEY_2，未配置时自动跳过
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - id: "1"
-            name: "账号1"
-            secret: TIEBA_COOKIES
-            sendkey: SENDKEY
-            log: tieba_sign_1.log
-          - id: "2"
-            name: "账号2"
-            secret: TIEBA_COOKIES_2
-            sendkey: SENDKEY_2
-            log: tieba_sign_2.log
-
-    # 每个账号独立并发组，互不阻塞
     concurrency:
-      group: tieba-qiandao-${{ matrix.id }}
+      group: tieba-qiandao-${{ inputs.id }}
       cancel-in-progress: false
 
     env:
-      TIEBA_COOKIES: ${{ secrets[matrix.secret] }}
-      SENDKEY: ${{ secrets[matrix.sendkey] }}
-      TIEBA_ACCOUNT: ${{ matrix.name }}
-      TIEBA_LOG_FILE: ${{ matrix.log }}
+      TIEBA_COOKIES: ${{ secrets.COOKIE }}
+      SENDKEY: ${{ secrets.SENDKEY }}
+      TIEBA_ACCOUNT: ${{ inputs.account }}
+      TIEBA_LOG_FILE: ${{ inputs.log_name }}
       PYTHONUNBUFFERED: "1"
 
     steps:
@@ -49,7 +51,7 @@ jobs:
         id: check
         run: |
           if [ -z "${TIEBA_COOKIES}" ]; then
-            echo "::warning::${{ matrix.name }} 未配置 Cookie（secret ${{ matrix.secret }}），本次跳过"
+            echo "::warning::${{ inputs.account }} 未配置 Cookie，本次跳过"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -78,7 +80,7 @@ jobs:
         continue-on-error: true
         run: python -u run_tieba_qiandao.py
 
-      # 网络抖动、贴吧接口偶发失败时自动重试一次；Cookie 失效这类错误重试也无法恢复
+      # 网络抖动、贴吧接口偶发失败时自动重试一次；Cookie 失效重试也无法恢复
       - name: Retry once
         if: steps.check.outputs.skip != 'true' && steps.sign.outcome == 'failure'
         run: |
@@ -90,7 +92,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tieba-sign-log-${{ matrix.id }}
-          path: ${{ matrix.log }}
+          name: tieba-sign-log-${{ inputs.id }}
+          path: ${{ inputs.log_name }}
           if-no-files-found: ignore
           retention-days: 7
