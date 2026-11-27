@@ -2,26 +2,39 @@ name: Tieba Qiandao
 
 on:
   schedule:
+    # UTC 18:30 = 北京时间 02:30
     - cron: "30 18 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# 避免上一次还没跑完就重复启动
+concurrency:
+  group: tieba-qiandao
+  cancel-in-progress: false
+
 jobs:
-  build:
+  sign:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
+          cache: pip
 
-      - name: Install Chrome (Chromium)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser
+      - name: Set up Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          install-dependencies: true
 
       - name: Install dependencies
         run: |
@@ -31,6 +44,17 @@ jobs:
       - name: Run Tieba Qiandao
         env:
           TIEBA_COOKIES: ${{ secrets.TIEBA_COOKIES }}
+          SENDKEY: ${{ secrets.SENDKEY }}
+          # 兼容旧配置里的 secret 名称
           SendKey: ${{ secrets.SendKey }}
-        run: |
-          python run_tieba_qiandao.py
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: python run_tieba_qiandao.py
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tieba-sign-log
+          path: tieba_sign.log
+          if-no-files-found: ignore
+          retention-days: 7

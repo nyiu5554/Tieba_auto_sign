@@ -1,0 +1,9 @@
+# 本地 Cookie 与日志，切勿提交到仓库
+tieba_cookies.json
+tieba_cookie.txt
+tieba_sign.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc

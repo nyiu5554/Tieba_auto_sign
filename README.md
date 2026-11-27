@@ -1,4 +1,6 @@
 
+> 🚀 **快速部署**：完整的从零部署步骤见 **[DEPLOY.md](./DEPLOY.md)**（已适配当前 GitHub Actions 环境，Chrome 安装方式、Secret 配置、定时时间修改、常见问题都在里面）。
+
 ## 1.前言 ✍️
 ### 1.1 介绍
 这是一个基于**Python DrissionPage**编写的，运行在**Github Action**上的贴吧每日签到运行脚本，默认每天在北京时间**凌晨2:30**(可根据需要进行修改)定时运行。
@@ -26,7 +28,7 @@
 ![](./img/image-2.png)
 所需要的库是**DrissionPage**，如果你原先没有，请下载该库：
 ```bash
-pip install dirssionpage
+pip install drissionpage
 ```
 准备就绪后，运行改代码，这时候会跳出一个**贴吧登录页面**，这时候你需要拿出手机，进行扫码登录。
 ![](./img/image-3.png)
@@ -146,6 +148,8 @@ if "SendKey" in os.environ:
 - 签到完成后，推送通知（可选）
 
 ## 5. 源码
+
+> 最新、可运行的代码以仓库中的 [`run_tieba_qiandao.py`](./run_tieba_qiandao.py) 为准，下方为旧版原理示意。
 ```python
 from DrissionPage import ChromiumOptions, ChromiumPage
 import json
