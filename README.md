@@ -30,18 +30,22 @@
 ```bash
 pip install drissionpage
 ```
-准备就绪后，运行改代码，这时候会跳出一个**贴吧登录页面**，这时候你需要拿出手机，进行扫码登录。
+准备就绪后，运行该脚本。脚本会**自动打开浏览器**并进入贴吧首页，请用手机扫码（或账号密码）登录。
 ![](./img/image-3.png)
-扫码登录成功之后，请按照代码运行终端上的要求，按下回车键。
+登录成功后回到终端按 **回车**，脚本就会保存这一份 Cookie，并自动清空登录状态、回到登录页，可以接着登录下一个账号；全部弄完输入 **x** 退出。
 ![](./img/image-4.png)
-这个时候，和代码**同目录**下会生成一个**tieba_cookies**的JSON文件，你的账号Cookie信息就准备好了。
+Cookie 会保存在脚本同目录的 **tieba_cookies/** 文件夹里，并且**按账号自动命名**（账号标识来自 Cookie 里的 TIEBAUID）：
+- `tieba_cookies/tieba_cookie_7a2a671a436fb21be7f481a3.json`
+- `tieba_cookies/tieba_cookie_8609f3e2a85a7b8fcc1175e5.json`
+同一个账号重新登录会覆盖它自己的文件，不同账号各自一个文件，不会混淆。
 ![](./img/image-5.png)
 然后回到你Github的仓库中(注意，是你自己的)，点击**Setting** -> **Secrets and variables** -> **Action**,进入秘钥配置界面。 
 ![](./img/image-6.png)
 点击**New repository secret**
 ![](./img/image-7.png)
-在**Name**中填入 “**TIEBA_COOKIES**”这个变量名，然后再下方的**Secret**中填入刚刚**tieba_cookies**的JSON文件里生成的Cookie，然后点击提交。
+在**Name**中填入 “**TIEBA_COOKIES**”这个变量名，然后再下方的**Secret**中填入**第一个账号**对应的 JSON 文件全部内容，然后点击提交。
 ![](./img/image-8.png)
+如果要跑**第二个账号**，再新建一个名为 “**TIEBA_COOKIES_2**” 的 Secret，填入第二个账号的 JSON 文件即可。
 现在，你的Cookie就配置好了。
 ### 3.3 配置Server酱通知
 每天脚本自动签到成功后，可以将签到成功的信息通过微信发给你，以便你了解签到情况。
@@ -52,7 +56,11 @@ pip install drissionpage
 **Name**填写“**SendKey**”变量名，然后**Secret**中填写刚刚复制的**SendKey**的值，最后提交。
 ![](./img/image-11.png)
 ### 3.4 测试运行
-回到你的仓库，点击**Action** -> **Tieba QianDao** -> **Run workflow** -> **Run workflow**
+回到你的仓库，点击 **Action**，左侧会看到两个独立的工作流：
+- **贴吧签到 - 账号1**（每天 02:30，对应 `TIEBA_COOKIES`）
+- **贴吧签到 - 账号2**（每天 03:00，对应 `TIEBA_COOKIES_2`）
+
+选一个 → **Run workflow** → **Run workflow** 即可手动测试。没有配置对应 Cookie 的那个会自动跳过，不会报错。
 ![](./img/image-12.png)
 点击之后，它就会运行了，这时候刷新页面就能看到运行状态了。
 ![](./img/image-13.png)
